@@ -154,6 +154,10 @@ app.use(function(req, res, next) {
 //queues
 var queues = []
 
+var ostats = []
+
+//check for duplicates values in queues
+let findDuplicates = (arr) => { return arr.filter((item, index) => arr.indexOf(item) != index) }
 
 //remove room
 function delRoom(current_room) {
@@ -191,13 +195,21 @@ io.on('connection', (socket) => {
             for (let i=0; i<queues.length; i++) {
                 let a = queues[i]
                 if (a.status == "n") {
-                    socket.join(a.id)
                     a.users.push(name)
-                    joiningid = a.id
-                    var croom = socket.rooms
-                    croom = croom.values()
-                    croom.next()
-                    current_room = croom.next().value
+                    let findUsers = findDuplicates(a.users)
+
+                    if (findUsers.length == 0) {
+                        socket.join(a.id)
+                        joiningid = a.id
+                        var croom = socket.rooms
+                        croom = croom.values()
+                        croom.next()
+                        current_room = croom.next().value
+                    } else {
+                        a.users.pop()
+                        io.to(socket.id).emit('sameName')
+                    }
+                    
                     break
                 } else if (a.status == "y") {
                     numberofqueueswithy++
@@ -269,15 +281,28 @@ io.on('connection', (socket) => {
     })
 
 
-    socket.on('gameFinished', () => {
-        delRoom(current_room)
-        for (let i=0; i < queues.length; i++) {
-            let a=queues[i]
+    socket.on('gameFinished', (data) => {
+        ostats.push(data)
 
+        for (let i=0; i<queues.length; i++) {
+            let a = queues[i]
             if (a.id == current_room) {
-                queues.splice(i, 1)
+                if (ostats.length == a.users.length)  {
+                    io.to(current_room).emit('ostats', ostats)
+
+                    delRoom(current_room)
+                    console.log(current_room + ' has finished racing.')
+                    for (let i=0; i < queues.length; i++) {
+                        let a=queues[i]
+
+                        if (a.id == current_room) {
+                            queues.splice(i, 1)
+                        }
+                    }
+                    ostats = []
+                }
             }
-        }
+        }        
     })
 
     socket.on('disconnect', () => {
@@ -290,6 +315,7 @@ io.on('connection', (socket) => {
                 if (b > -1) {
                     a.users.splice(b, 1);
                 }
+                io.to(a.id).emit('userDc', name)
             }
         }
 

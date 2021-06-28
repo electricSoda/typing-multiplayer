@@ -20,7 +20,7 @@
         
         <div id='nn'>
             <h1>Please enter your username:</h1>
-            <input type='text' class='entry' id='username' onkeypress="usernamevalidate(event)">
+            <input type='text' maxlength = "15" class='entry' id='username' onkeypress="usernamevalidate(event)">
         </div>
 
         <div id='ss'>
@@ -30,7 +30,8 @@
         <div id='text'></div>
         <input type='text' id='e' class='entry' placeholder="Type here" onkeypress='validate(event)'>
         <div id='status'>
-            <canvas id='canvas1'>Your browser does not support the canvas element.</canvas>
+            <canvas id='canvas1'>Your browser does not support the canvas element, please update to a different browser.</canvas>
+            <div id='ostats'></div>
         </div>
         
         <script src="main.js" async defer></script>

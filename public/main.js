@@ -3,6 +3,29 @@ var nn = document.getElementById('nn')
 var username = document.getElementById('username')
 var gname
 
+
+//check for url parameters
+window.onload = (event) => {
+    const queryString = window.location.search
+
+    const urlParams = new URLSearchParams(queryString)
+
+    if (urlParams.has('name')) {
+        gname = urlParams.get('name')
+
+        nn.innerHTML = `
+            <h1>Waiting for a queue...</h1>
+            <p>Please be patient. </p>
+            <p>Also did you know? We automatically focus onto the WPM entry area when the race begins.</p>
+        `
+
+        player.name = gname
+        s()
+        drawPlayer()
+    }
+}
+
+
 function usernamevalidate(e) {
     if (e.which == 13) {
         e.preventDefault()
@@ -42,6 +65,7 @@ const canvas = document.getElementById('canvas1')
 canvas.width = sw
 canvas.height = sh
 const ctx = canvas.getContext('2d')
+
 
 //player
 var player = {
@@ -161,6 +185,8 @@ function moveOtherPlayers(name) {
     ofname.y -= ofname.speed
 }
 
+let gameFinished = false
+
 function update() {
     document.getElementById('e').focus()
     clear()
@@ -173,6 +199,26 @@ function update() {
 
     drawPlayer()   
     drawOtherPlayers()
+    
+    //check if race is finished
+    if (player.speed == 0) {
+        let amount_of_users_finished = 0
+        for (let i = 0; i<users.length; i++) {
+            let a = users[i]
+
+            if (a.speed == 0) {
+                amount_of_users_finished++
+            }
+        }
+
+        if (amount_of_users_finished == users.length) {
+            if (!gameFinished) {
+                socket.emit('gameFinished', ss.innerHTML)
+                gameFinished = true
+                console.log('Race finished.')
+            }
+        }
+    }
 
     requestAnimationFrame(update)  
 }
@@ -180,6 +226,7 @@ function update() {
 
 //play again
 function playAgain() {
+    window.location.href += "?name="+gname;
     socket.emit('waiting', gname)
 
 
@@ -190,6 +237,8 @@ function playAgain() {
             <p>Please be patient. </p>
             <p>Also did you know? We automatically focus onto the WPM entry area when the race begins.</p>
     `
+    s()
+    drawPlayer()
 }
 
 
@@ -306,6 +355,39 @@ function s() {
             // pass
         } else {
             moveOtherPlayers(data)
+        }
+    })
+
+    socket.on('sameName', () => {
+        alert(`Cannot join queue because there is already someone connected called ${gname}`)
+        location.reload()
+    })
+
+    socket.on('userDc', (data)=> {
+        for(let i=0; i<users.length; i++) {
+            let a = users[i]
+
+            if (a.name == data) {
+                users.splice(i, 1)
+            }
+        }
+    })
+
+    socket.on('ostats', (data)=> {
+        let ostats = document.getElementById('ostats')
+
+        ostats.style.display = "block"
+        data.reverse()
+        for (let i = 0; i<data.length; i++) {
+            var lines = data[i].split('\n');
+            lines.splice(0, 1)
+            lines.splice(0, 1)
+            lines.splice(0, 1)
+            lines.pop()
+            lines.pop() 
+            var newText = lines.join('\n')
+            console.log(lines, newText)
+            ostats.innerHTML = ostats.innerHTML + newText
         }
     })
 }
@@ -438,6 +520,7 @@ function validate(e) {
             c_word++
             clearInterval(timer)
             ss.innerHTML += `
+            <h2>Name: ${gname}</h2>
             <h2>Placing: #${player.place}</h2>
             <p>Words Typed: ${c_word}</p>
             <p>Accuracy (based on words typed): ${Math.round((words_correct/c_word)*100)}%</p>
@@ -451,7 +534,7 @@ function validate(e) {
             <button class='fifth' onclick='playAgain()'>Play again</button>
             `
             entry.disabled = true
-            socket.emit('gameFinished')
+            update()
             document.getElementById('text').innerHTML = ''
         } else {
             words[c_word].classList.toggle('highlighted')
@@ -477,12 +560,14 @@ function validate(e) {
             words[c_word].classList.remove('highlighted-wrong')
         }
 
+        socket.emit('moved', gname)
         movePlayer()
         entry.value = ""
         ss.style.display = "block"
         c_word++
         clearInterval(timer)
         ss.innerHTML += `
+        <h2>Name: ${gname}</h2>
         <h2>Placing: 1st place</h2>
         <p>Words Typed: ${c_word}</p>
         <p>Accuracy: ${Math.round((words_correct/words.length)*100)}%</p>
