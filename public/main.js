@@ -226,7 +226,7 @@ function update() {
 
 //play again
 function playAgain() {
-    window.location.href += "?name="+gname;
+    window.location.href = "?name="+gname;
     socket.emit('waiting', gname)
 
 
