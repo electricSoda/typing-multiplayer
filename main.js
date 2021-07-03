@@ -144,7 +144,7 @@ var uniqid = require('uniqid')
 app.use(express.static('public'))
 
 app.get('/', (req,res) => {
-    res.sendFile(__dirname + '/')
+    res.sendFile(__dirname + '/public')
 })
 
 app.use(function(req, res, next) {

@@ -28,17 +28,19 @@ window.onload = (event) => {
 
 function usernamevalidate(e) {
     if (e.which == 13) {
-        e.preventDefault()
-        gname = username.value
-        player.name = gname
-        username.value = ""
-        nn.innerHTML = `
-            <h1>Waiting for a queue...</h1>
-            <p>Please be patient. </p>
-            <p>Also did you know? We automatically focus onto the WPM entry area when the race begins.</p>
-        `
-        s()
-        drawPlayer()
+        if (e.target.value != '') {
+            e.preventDefault()
+            gname = username.value
+            player.name = gname
+            username.value = ""
+            nn.innerHTML = `
+                <h1>Waiting for a queue...</h1>
+                <p>Please be patient. </p>
+                <p>Also did you know? We automatically focus onto the WPM entry area when the race begins.</p>
+            `
+            s()
+            drawPlayer()
+        }
     }
 }
 
@@ -245,6 +247,7 @@ function playAgain() {
 
 var socket
 var vspacing
+let textLength
 
 //socket connection
 function s() {
@@ -289,6 +292,10 @@ function s() {
                 nn.style.display = "none"
                 console.log(data.text)
                 addText(data.text)
+                textLength = data.text.split(' ')
+                textLength = textLength.join()
+                textLength = textLength.length
+
                 for (let i=0; i < data.names.length; i++) {
                     let a = data.names[i]
                     if (a == gname) {
@@ -331,6 +338,10 @@ function s() {
                 nn.style.display = "none"
                 console.log(data.text)
                 addText(data.text)
+                textLength = data.text.split(' ')
+                textLength = textLength.join()
+                textLength = textLength.length
+
                 for (let i=0; i < data.names.length; i++) {
                     let a = data.names[i]
                     if (a == gname) {
@@ -387,7 +398,7 @@ function s() {
             lines.pop() 
             var newText = lines.join('\n')
             console.log(lines, newText)
-            ostats.innerHTML = ostats.innerHTML + newText
+            ostats.innerHTML = ostats.innerHTML + newText + "<hr>"
         }
     })
 }
@@ -424,6 +435,15 @@ function addText(text) {
     }
 }
 
+
+//prevent whitespace
+function ns(event) {
+    if (event.which == 32) {
+        e.preventDefault()
+    }
+}
+
+
 // validate
 var words = document.body.getElementsByTagName("word")
 var entry = document.getElementById("e")
@@ -447,16 +467,7 @@ var words_incorrect = 0
 var characters_correct = 0
 var characters_incorrect = 0
 
-var word_combined = ""
-
-entry.onkeydown = (e) => {
-    if (e.which == 8) {
-        word_combined = word_combined.slice(0, -1)
-    }
-}
-
 function validate(e) {
-    word_combined += e.key
     typedkey = e.which
 
     //valid keys
@@ -470,7 +481,9 @@ function validate(e) {
 
     try {
         if (valid) {
-            if (!words[c_word].innerHTML.includes(word_combined)) {
+            let current_Char_Formation = words[c_word].innerHTML + ' '
+            current_Char_Formation = current_Char_Formation.substring(0, e.target.value.length)
+            if (current_Char_Formation != e.target.value) {
                 if (!words[c_word].classList.contains('highlighted-wrong')) {
                     words[c_word].classList.add('highlighted-wrong')
                     characters_incorrect++
@@ -495,51 +508,58 @@ function validate(e) {
 
     if (e.which == 32) {
         e.preventDefault()
-        socket.emit('moved', gname)
-        movePlayer()
-        word_combined = ""
+        e.target.value = e.target.value.slice(0, -1)
         if (entry.value == words[c_word].innerHTML) {
             words[c_word].classList.add("correct")
             words_correct++
+
+            socket.emit('moved', gname)
+            movePlayer()
         } 
         if (entry.value != words[c_word].innerHTML) {
             if (words[c_word].classList.contains("highlighted-wrong")) {
                 words[c_word].classList.remove('highlighted-wrong')
             }
-            words[c_word].classList.add("incorrect")
             words_incorrect++
         }
         if (words[c_word].classList.contains('highlighted-wrong')) {
             words[c_word].classList.remove('highlighted-wrong')
         }
         if (c_word == words.length-1) {
-            movePlayer()
-            socket.emit('moved', gname)
+            if (entry.value == words[c_word].innerHTML) {
+                movePlayer()
+                socket.emit('moved', gname)
+                
+                ss.style.display = "block"
+                c_word++
+                clearInterval(timer)
+                ss.innerHTML += `
+                <h2>Name: ${gname}</h2>
+                <h2>Placing: #${player.place}</h2>
+                <p>Words Typed: ${c_word}</p>
+                <p>Accuracy: ${Math.round(((textLength-(characters_incorrect * 0.5))/textLength)*100)}%</p>
+                <p>WPM: ${Math.round(((60/time) * c_word)-((60/time) * c_word)*((100 - ((words_correct/words.length)*100)) / 100))}</p>     
+                <p>Raw WPM: ${Math.round((60/time) * c_word)}</p>
+                <p>Time: ${new Date(time * 1000).toISOString().substr(11, 8)}</p>
+                <p>Correct words typed: ${words_correct}</p>
+                <p>Incorrect words typed: ${words_incorrect}</p>
+                <p>Correct characters typed: ${characters_correct}</p>
+                <p>Incorrect characters typed: ${characters_incorrect}</p>
+                <button class='fifth' onclick='playAgain()'>Play again</button>
+                `
+                entry.disabled = true
+                update()
+                document.getElementById('text').innerHTML = ''
+            }
+
             entry.value = ""
-            ss.style.display = "block"
-            c_word++
-            clearInterval(timer)
-            ss.innerHTML += `
-            <h2>Name: ${gname}</h2>
-            <h2>Placing: #${player.place}</h2>
-            <p>Words Typed: ${c_word}</p>
-            <p>Accuracy (based on words typed): ${Math.round((words_correct/c_word)*100)}%</p>
-            <p>WPM: ${Math.round(((60/time) * c_word)-((60/time) * c_word)*((100 - ((words_correct/words.length)*100)) / 100))}</p>     
-            <p>Raw WPM: ${Math.round((60/time) * c_word)}</p>
-            <p>Time: ${new Date(time * 1000).toISOString().substr(11, 8)}</p>
-            <p>Correct words typed: ${words_correct}</p>
-            <p>Incorrect words typed: ${words_incorrect}</p>
-            <p>Correct characters typed: ${characters_correct}</p>
-            <p>Incorrect characters typed: ${characters_incorrect}</p>
-            <button class='fifth' onclick='playAgain()'>Play again</button>
-            `
-            entry.disabled = true
-            update()
-            document.getElementById('text').innerHTML = ''
         } else {
-            words[c_word].classList.toggle('highlighted')
-            c_word++
-            words[c_word].classList.toggle('highlighted')
+            if (entry.value == words[c_word].innerHTML) {
+                words[c_word].classList.toggle('highlighted')
+                c_word++
+                words[c_word].classList.toggle('highlighted')
+            }
+            
             entry.value = ""
         }
     }    
@@ -548,37 +568,39 @@ function validate(e) {
         if (entry.value == words[c_word].innerHTML) {
             words[c_word].classList.add("correct")
             words_correct++
+
+            socket.emit('moved', gname)
+            movePlayer()
+            entry.value = ""
+            ss.style.display = "block"
+            c_word++
+            clearInterval(timer)
+            ss.innerHTML += `
+            <h2>Name: ${gname}</h2>
+            <h2>Placing: 1st place</h2>
+            <p>Words Typed: ${c_word}</p>
+            <p>Accuracy: ${Math.round(((textLength-(characters_incorrect * 0.5))/textLength)*100)}%</p>
+            <p>WPM: ${Math.round(((60/time) * c_word)-((60/time) * c_word)*((100 - ((words_correct/words.length)*100)) / 100))}</p>     
+            <p>Raw WPM: ${Math.round((60/time) * c_word)}</p>
+            <p>Time: ${new Date(time * 1000).toISOString().substr(11, 8)}</p>
+            <p>Correct words typed: ${words_correct}</p>
+            <p>Incorrect words typed: ${words_incorrect}</p>
+            <p>Correct characters typed: ${characters_correct}</p>
+            <p>Incorrect characters typed: ${characters_incorrect}</p>
+            `
+            entry.disabled = true
+
         } 
         if (entry.value != words[c_word].innerHTML) {
             if (words[c_word].classList.contains("highlighted-wrong")) {
                 words[c_word].classList.remove('highlighted-wrong')
             }
-            words[c_word].classList.add("incorrect")
             words_incorrect++
         }
         if (words[c_word].classList.contains('highlighted-wrong')) {
             words[c_word].classList.remove('highlighted-wrong')
         }
 
-        socket.emit('moved', gname)
-        movePlayer()
-        entry.value = ""
-        ss.style.display = "block"
-        c_word++
-        clearInterval(timer)
-        ss.innerHTML += `
-        <h2>Name: ${gname}</h2>
-        <h2>Placing: 1st place</h2>
-        <p>Words Typed: ${c_word}</p>
-        <p>Accuracy: ${Math.round((words_correct/words.length)*100)}%</p>
-        <p>WPM: ${Math.round(((60/time) * c_word)-((60/time) * c_word)*((100 - ((words_correct/words.length)*100)) / 100))}</p>     
-        <p>Raw WPM: ${Math.round((60/time) * c_word)}</p>
-        <p>Time: ${new Date(time * 1000).toISOString().substr(11, 8)}</p>
-        <p>Correct words typed: ${words_correct}</p>
-        <p>Incorrect words typed: ${words_incorrect}</p>
-        <p>Correct characters typed: ${characters_correct}</p>
-        <p>Incorrect characters typed: ${characters_incorrect}</p>
-        `
-        entry.disabled = true
+        entry.value = ''
     }
 }
