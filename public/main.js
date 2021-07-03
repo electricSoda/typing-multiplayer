@@ -436,13 +436,6 @@ function addText(text) {
 }
 
 
-//prevent whitespace
-function ns(event) {
-    if (event.which == 32) {
-        e.preventDefault()
-    }
-}
-
 
 // validate
 var words = document.body.getElementsByTagName("word")
@@ -469,6 +462,7 @@ var characters_incorrect = 0
 
 function validate(e) {
     typedkey = e.which
+    let newText
 
     //valid keys
     var valid = 
@@ -478,12 +472,17 @@ function validate(e) {
         (typedkey > 185 && typedkey < 193) || // ;=,-./` (in order)
         (typedkey > 218 && typedkey < 223)   // [\]' (in order)
 
+    if (valid) {
+        newText = entry.value + String.fromCharCode(typedkey)
+    }
 
     try {
         if (valid) {
-            let current_Char_Formation = words[c_word].innerHTML + ' '
-            current_Char_Formation = current_Char_Formation.substring(0, e.target.value.length)
-            if (current_Char_Formation != e.target.value) {
+            
+
+            let current_Char_Formation = words[c_word].innerHTML
+            current_Char_Formation = current_Char_Formation.substring(0, newText.length)
+            if (current_Char_Formation != newText) {
                 if (!words[c_word].classList.contains('highlighted-wrong')) {
                     words[c_word].classList.add('highlighted-wrong')
                     characters_incorrect++
@@ -508,7 +507,6 @@ function validate(e) {
 
     if (e.which == 32) {
         e.preventDefault()
-        e.target.value = e.target.value.slice(0, -1)
         if (entry.value == words[c_word].innerHTML) {
             words[c_word].classList.add("correct")
             words_correct++
