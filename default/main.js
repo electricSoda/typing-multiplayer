@@ -1,3 +1,5 @@
+console.log("%c ⚠ WARNING!!! DO NOT PASTE CODE INTO THIS CONSOLE FROM *ANYONE*, UNLESS YOU TRUST THEM.", "color: yellow; font-weight: bold; background-color: black; font-size: 35px;")
+
 //name
 var nn = document.getElementById('nn')
 var username = document.getElementById('username')
